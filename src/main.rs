@@ -1,6 +1,7 @@
 use actix_web::{get,  web, App, HttpResponse, HttpServer, Responder};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use uuid::Uuid;
 use std::sync::Mutex;
 use models::todo::{TodoCreateRequest, TodoItem};
 
@@ -43,7 +44,7 @@ async fn create_todo(
     
     // Create a new `TodoItem` and assign a UUID.
     let new_todo = TodoItem {
-        id: "4".to_string(),
+        id: Uuid::new_v4().to_string(),
         title: todo_request.title.clone(),
         completed: todo_request.completed,
     };
