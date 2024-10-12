@@ -1,6 +1,15 @@
-use actix_web::{get, post,  App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use std::sync::Mutex;
+use models::todo::TodoItem;
+
+mod models;
+
+
+struct AppState {
+    todos: Mutex<Vec<TodoItem>>,
+}
 
 #[utoipa::path(
     get, 
@@ -39,7 +48,8 @@ async fn main() -> std::io::Result<()> {
     /// Define OpenAPI documentation using Utoipa
     #[derive(OpenApi)]
     #[openapi(
-        paths(health)
+        paths(health), 
+        components(schemas(TodoItem))
     )]
     struct ApiDoc;
 
@@ -51,7 +61,11 @@ async fn main() -> std::io::Result<()> {
 
 
     HttpServer::new(move || {
-        App::new().service(
+        App::new()
+        .app_data(web::Data::new(AppState {
+            todos: Mutex::new(Vec::new()),
+        }))
+        .service(
             SwaggerUi::new("/swagger/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
         )
     })
