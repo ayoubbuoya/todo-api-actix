@@ -1,15 +1,6 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize, Clone, ToSchema)]
-pub struct TodoItem {
-    #[schema(example = "c5aaefd0-8f5d-41d9-9210-935fa2aabefa")]
-    pub id: String,
-    #[schema(example = "Read 15 pages of Rust book")]
-    pub title: String,
-    pub completed: bool,
-}
-
 // Struct for creating a new todo, without `id` field.
 #[derive(Deserialize, ToSchema)]
 pub struct TodoCreateRequest {
@@ -19,13 +10,6 @@ pub struct TodoCreateRequest {
 
 #[derive(Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
 pub struct Todo {
-    pub title: String,
-    pub completed: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
-pub struct TodoDB {
-    pub _id: String,
     pub title: String,
     pub completed: bool,
 }

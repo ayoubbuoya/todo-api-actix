@@ -8,8 +8,7 @@ use futures::stream::TryStreamExt;
 use models::todo::{Todo, TodoCreateRequest};
 use mongodb::{
     bson::{doc, oid::ObjectId},
-    options::IndexOptions,
-    Client, Collection, IndexModel,
+    Client, Collection,
 };
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -35,7 +34,7 @@ async fn health() -> impl Responder {
     path = "/todos",
     request_body = TodoCreateRequest,
     responses(
-        (status = 201, description = "Todo created successfully", body = TodoItem),
+        (status = 201, description = "Todo created successfully", body = Todo),
         (status = 400, description = "Invalid input")
     )
 )]
@@ -45,7 +44,7 @@ async fn create_todo(
 ) -> impl Responder {
     let collection = client.database(DB_NAME).collection(COLL_NAME);
 
-    // Create a new `TodoItem` and assign a UUID.
+    // Create a new `Todo` and assign a UUID.
     let new_todo = Todo {
         title: todo_request.title.clone(),
         completed: false,
@@ -54,7 +53,7 @@ async fn create_todo(
     let result = collection.insert_one(new_todo.clone()).await;
 
     match result {
-        Ok(_) => HttpResponse::Ok().body("user added"),
+        Ok(_) => HttpResponse::Ok().json(new_todo),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }
@@ -85,7 +84,7 @@ async fn get_todos(client: web::Data<Client>) -> impl Responder {
     get,
     path = "/todos/{id}",
     responses(
-        (status = 200, description = "Todo item found", body = TodoItem),
+        (status = 200, description = "Todo item found", body = Todo),
         (status = 404, description = "Todo item not found")
     ),
     params(("id" = Uuid, description = "Todo item ID"))
@@ -110,7 +109,7 @@ async fn get_todo(client: web::Data<Client>, todo_id: Path<String>) -> impl Resp
 #[utoipa::path(
     put,
     path = "/todos/{id}",
-    request_body = TodoItem,
+    request_body = Todo,
     responses(
         (status = 200, description = "Todo updated successfully", body = Todo),
         (status = 404, description = "Todo item not found")
