@@ -21,11 +21,7 @@ cargo run
 - **Read Todo**: In Progress
 - **Update Todo**: In Progress
 - **Delete Todo**: In Progress
+- **Use MongoDB**: In Progress
 
 ## Future Plans
-
-- **Use MongoDB**: planned
 - **User JWT Authentication**: Planned
-
-
-
