@@ -17,8 +17,15 @@ pub struct TodoCreateRequest {
     pub title: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
 pub struct Todo {
+    pub title: String,
+    pub completed: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, ToSchema, PartialEq, Eq)]
+pub struct TodoDB {
+    pub _id: String,
     pub title: String,
     pub completed: bool,
 }

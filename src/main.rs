@@ -1,10 +1,10 @@
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
+use futures::stream::TryStreamExt;
 use models::todo::{Todo, TodoCreateRequest, TodoItem};
 use mongodb::{bson::doc, options::IndexOptions, Client, Collection, IndexModel};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use uuid::Uuid;
 
 mod models;
 
@@ -56,6 +56,27 @@ async fn create_todo(
     }
 }
 
+// Retrieve all to-do items
+#[utoipa::path(
+    get,
+    path = "/todos",
+    responses((status = 200, description = "List of to-do items", body = [Todo]))
+)]
+async fn get_todos(client: web::Data<Client>) -> impl Responder {
+    let collection: Collection<Todo> = client.database(DB_NAME).collection(COLL_NAME);
+    match collection.find(doc! {}).await {
+        Ok(cursor) => {
+            let todos: Vec<Todo> = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+            if todos.is_empty() {
+                HttpResponse::NotFound().body(format!("No users found"))
+            } else {
+                HttpResponse::Ok().json(todos)
+            }
+        }
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    }
+}
+
 // Update a to-do item
 #[utoipa::path(
     put,
@@ -100,17 +121,6 @@ async fn delete_todo(data: web::Data<AppState>, todo_id: web::Path<String>) -> i
     } else {
         HttpResponse::NotFound().body("Item not found")
     }
-}
-
-// Retrieve all to-do items
-#[utoipa::path(
-    get,
-    path = "/todos",
-    responses((status = 200, description = "List of to-do items", body = [TodoItem]))
-)]
-async fn get_todos(data: web::Data<AppState>) -> impl Responder {
-    let todos = data.todos.clone();
-    HttpResponse::Ok().json(&*todos)
 }
 
 // Retrieve a to-do item by ID
