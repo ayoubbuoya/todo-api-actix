@@ -70,7 +70,7 @@ async fn get_todos(client: web::Data<Client>) -> impl Responder {
         Ok(cursor) => {
             let todos: Vec<Todo> = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
             if todos.is_empty() {
-                HttpResponse::NotFound().body(format!("No users found"))
+                HttpResponse::NotFound().body(format!("No todos found"))
             } else {
                 HttpResponse::Ok().json(todos)
             }
