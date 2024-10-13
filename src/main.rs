@@ -206,6 +206,8 @@ async fn main() -> std::io::Result<()> {
 
     println!("starting HTTP server at http://localhost:8080");
 
+    println!("Swagger is available at http://localhost:8080/swagger/");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))

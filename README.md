@@ -14,6 +14,14 @@ To run the API, ensure you have Rust and Cargo installed. Then, clone the reposi
 cargo run
 ```
 
+The API will be available at http://localhost:8080.
+
+## Swagger Documentation
+
+You can also use Swagger to interact with the API.
+
+Swagger documentation is available at http://localhost:8080/swagger/.
+
 ## Core Features
 
 - **Implement Swagger**: Done
@@ -24,4 +32,5 @@ cargo run
 - **Use MongoDB**: Done
 
 ## Future Plans
+
 - **User JWT Authentication**: Planned
