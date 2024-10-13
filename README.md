@@ -17,11 +17,11 @@ cargo run
 ## Core Features
 
 - **Implement Swagger**: Done
-- **Create Todo**: In Progress
-- **Read Todo**: In Progress
-- **Update Todo**: In Progress
-- **Delete Todo**: In Progress
-- **Use MongoDB**: In Progress
+- **Create Todo**: Done
+- **Read Todo**: Done
+- **Update Todo**: Done
+- **Delete Todo**: Done
+- **Use MongoDB**: Done
 
 ## Future Plans
 - **User JWT Authentication**: Planned

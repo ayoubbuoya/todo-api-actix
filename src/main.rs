@@ -1,8 +1,16 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    get,
+    web::{self, Json, Path},
+    App, HttpResponse, HttpServer, Responder,
+};
 use dotenv::dotenv;
 use futures::stream::TryStreamExt;
-use models::todo::{Todo, TodoCreateRequest, TodoItem};
-use mongodb::{bson::doc, options::IndexOptions, Client, Collection, IndexModel};
+use models::todo::{Todo, TodoCreateRequest};
+use mongodb::{
+    bson::{doc, oid::ObjectId},
+    options::IndexOptions,
+    Client, Collection, IndexModel,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -10,11 +18,6 @@ mod models;
 
 const DB_NAME: &str = "rust-todo";
 const COLL_NAME: &str = "todos";
-
-// App state to hold the to-do list
-struct AppState {
-    todos: Vec<TodoItem>,
-}
 
 #[utoipa::path(
     get,
@@ -77,29 +80,66 @@ async fn get_todos(client: web::Data<Client>) -> impl Responder {
     }
 }
 
+// Retrieve a to-do item by ID
+#[utoipa::path(
+    get,
+    path = "/todos/{id}",
+    responses(
+        (status = 200, description = "Todo item found", body = TodoItem),
+        (status = 404, description = "Todo item not found")
+    ),
+    params(("id" = Uuid, description = "Todo item ID"))
+)]
+async fn get_todo(client: web::Data<Client>, todo_id: Path<String>) -> impl Responder {
+    let collection: Collection<Todo> = client.database(DB_NAME).collection(COLL_NAME);
+    let object_id = match ObjectId::parse_str(&todo_id.into_inner()) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid ID format"),
+    };
+
+    let filter = doc! { "_id": object_id };
+
+    match collection.find_one(filter).await {
+        Ok(Some(todo)) => HttpResponse::Ok().json(todo),
+        Ok(None) => HttpResponse::NotFound().body("Item not found"),
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    }
+}
+
 // Update a to-do item
 #[utoipa::path(
     put,
     path = "/todos/{id}",
     request_body = TodoItem,
     responses(
-        (status = 200, description = "Todo updated successfully", body = TodoItem),
+        (status = 200, description = "Todo updated successfully", body = Todo),
         (status = 404, description = "Todo item not found")
     ),
     params(("id" = Uuid, description = "Todo item ID"))
 )]
 async fn update_todo(
-    data: web::Data<AppState>,
-    todo_id: web::Path<String>,
-    updated_todo: web::Json<TodoItem>,
+    client: web::Data<Client>,
+    todo_id: Path<String>,
+    updated_todo: Json<Todo>,
 ) -> impl Responder {
-    let mut todos = data.todos.clone();
-    if let Some(todo) = todos.iter_mut().find(|item| item.id == *todo_id) {
-        todo.title = updated_todo.title.clone();
-        todo.completed = updated_todo.completed;
-        HttpResponse::Ok().json(todo)
-    } else {
-        HttpResponse::NotFound().body("Item not found")
+    let collection: Collection<Todo> = client.database(DB_NAME).collection(COLL_NAME);
+    let object_id = match ObjectId::parse_str(&todo_id.into_inner()) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid ID format"),
+    };
+
+    let filter = doc! { "_id": object_id };
+    let update = doc! { "$set": { "title": updated_todo.title.clone(), "completed": updated_todo.completed } };
+
+    match collection.update_one(filter, update).await {
+        Ok(result) => {
+            if result.matched_count > 0 {
+                HttpResponse::Ok().json(updated_todo.into_inner())
+            } else {
+                HttpResponse::NotFound().body("Item not found")
+            }
+        }
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }
 
@@ -113,31 +153,24 @@ async fn update_todo(
     ),
     params(("id" = Uuid, description = "Todo item ID"))
 )]
-async fn delete_todo(data: web::Data<AppState>, todo_id: web::Path<String>) -> impl Responder {
-    let mut todos = data.todos.clone();
-    if todos.iter().position(|item| item.id == *todo_id).is_some() {
-        todos.retain(|item| item.id != *todo_id);
-        HttpResponse::NoContent().finish()
-    } else {
-        HttpResponse::NotFound().body("Item not found")
-    }
-}
+async fn delete_todo(client: web::Data<Client>, todo_id: Path<String>) -> impl Responder {
+    let collection: Collection<Todo> = client.database(DB_NAME).collection(COLL_NAME);
+    let object_id = match ObjectId::parse_str(&todo_id.into_inner()) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid ID format"),
+    };
 
-// Retrieve a to-do item by ID
-#[utoipa::path(
-    get,
-    path = "/todos/{id}",
-    responses(
-        (status = 200, description = "Todo item found", body = TodoItem),
-        (status = 404, description = "Todo item not found")
-    ),
-    params(("id" = Uuid, description = "Todo item ID"))
-)]
-async fn get_todo(data: web::Data<AppState>, todo_id: web::Path<String>) -> impl Responder {
-    let todos = data.todos.clone();
-    match todos.iter().find(|item| item.id == *todo_id) {
-        Some(todo) => HttpResponse::Ok().json(todo),
-        None => HttpResponse::NotFound().body("Item not found"),
+    let filter = doc! { "_id": object_id };
+
+    match collection.delete_one(filter).await {
+        Ok(result) => {
+            if result.deleted_count > 0 {
+                HttpResponse::NoContent().finish()
+            } else {
+                HttpResponse::NotFound().body("Item not found")
+            }
+        }
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }
 
@@ -149,7 +182,7 @@ async fn main() -> std::io::Result<()> {
     #[derive(OpenApi)]
     #[openapi(
         paths(health, create_todo, get_todos, update_todo, delete_todo, get_todo),
-        components(schemas(TodoItem, TodoCreateRequest))
+        components(schemas(Todo, TodoCreateRequest))
     )]
     struct ApiDoc;
 
